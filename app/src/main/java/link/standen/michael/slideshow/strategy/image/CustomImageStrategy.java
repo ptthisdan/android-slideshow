@@ -9,6 +9,7 @@ import android.widget.ImageView;
 
 import javax.microedition.khronos.opengles.GL11;
 
+import link.standen.michael.slideshow.PoseImageView;
 import link.standen.michael.slideshow.model.FileItem;
 import link.standen.michael.slideshow.strategy.image.custom.CustomRotateDimenTransformation;
 
@@ -41,7 +42,7 @@ public class CustomImageStrategy implements ImageStrategy {
 
 
 	@Override
-	public void load(FileItem item, ImageView view) {
+	public void load(FileItem item, PoseImageView view) {
 		BitmapFactory.Options options = new BitmapFactory.Options();
 		options.inJustDecodeBounds = true;
 		BitmapFactory.decodeFile(item.getPath(), options);

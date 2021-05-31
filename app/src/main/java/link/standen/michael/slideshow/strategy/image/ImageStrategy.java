@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.widget.ImageView;
 
+import link.standen.michael.slideshow.PoseImageView;
 import link.standen.michael.slideshow.model.FileItem;
 
 /**
@@ -33,7 +34,7 @@ public interface ImageStrategy {
 	 * Loads the image of the file item into the view.
 	 * @param item
 	 */
-	void load(FileItem item, ImageView view);
+	void load(FileItem item, PoseImageView view);
 
 	/**
 	 * Load relevant preferences.

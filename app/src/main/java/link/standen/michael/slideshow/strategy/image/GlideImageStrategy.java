@@ -17,6 +17,7 @@ import com.bumptech.glide.load.resource.gif.GifDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 
+import link.standen.michael.slideshow.PoseImageView;
 import link.standen.michael.slideshow.R;
 import link.standen.michael.slideshow.model.FileItem;
 import link.standen.michael.slideshow.strategy.image.glide.GlideRotateDimenTransformation;
@@ -56,7 +57,8 @@ public class GlideImageStrategy implements ImageStrategy {
 	}
 
 	@Override
-	public void load(final FileItem item, final ImageView view) {
+			public void load(final FileItem item, final PoseImageView view){
+//	public void load(final FileItem item, final ImageView view) {
 		DrawableTypeRequest<String> glideLoad = Glide
 				.with(context)
 				.load(item.getPath());
