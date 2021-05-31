@@ -15,6 +15,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.baidu.ar.Authenticator;
+import com.baidu.ar.auth.IAuthCallback;
 
 import java.io.File;
 
@@ -27,6 +32,10 @@ import link.standen.michael.slideshow.util.FileItemHelper;
  * Slideshow main activity.
  */
 public class MainActivity extends BaseActivity {
+
+	static {
+		System.loadLibrary("c++_shared");
+	}
 
 	private static final String TAG = MainActivity.class.getName();
 
@@ -63,7 +72,23 @@ public class MainActivity extends BaseActivity {
 			// Override using passed value
 			currentPath = getIntent().getStringExtra("path");
 		}
+
+		System.loadLibrary("auth");
+		// 初始化授权模块
+		Authenticator.init(getApplicationContext(), new IAuthCallback() {
+			@Override
+			public void onSuccess() {
+				Log.d(TAG, "Authenticator Passed");
+			}
+
+			@Override
+			public void onError(String errorMessage, int featureCode) {
+				Log.e(TAG, "Authenticator Failed");
+			}
+		});
+
 	}
+
 
 	@Override
 	protected void onStart() {
