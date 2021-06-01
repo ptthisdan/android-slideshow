@@ -15,11 +15,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import com.baidu.ar.Authenticator;
 import com.baidu.ar.auth.IAuthCallback;
+import com.baidu.arpose.ARMdlHumanPoseJNI;
 
 import java.io.File;
 
@@ -86,6 +85,8 @@ public class MainActivity extends BaseActivity {
 				Log.e(TAG, "Authenticator Failed");
 			}
 		});
+		ARMdlHumanPoseJNI.setAssetManager(getAssets());
+		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
 
 	}
 

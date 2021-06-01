@@ -1,6 +1,7 @@
 package link.standen.michael.slideshow;
 
 import android.content.res.AssetManager;
+import com.baidu.arpose.ARMdlHumanPoseJNI;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;

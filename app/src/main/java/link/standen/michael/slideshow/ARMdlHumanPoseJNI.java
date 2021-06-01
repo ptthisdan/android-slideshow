@@ -1,10 +1,15 @@
-package link.standen.michael.slideshow;
+//package link.standen.michael.slideshow;
+package com.baidu.arpose;
 
 import android.content.res.AssetManager;
 
 import java.nio.ByteBuffer;
 
 public class ARMdlHumanPoseJNI {
+
+    static {
+        System.loadLibrary("BARhumanpose3d");
+    }
 
     public static void initJNI(String name){
         System.loadLibrary(name);
