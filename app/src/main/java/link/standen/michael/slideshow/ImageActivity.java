@@ -439,7 +439,7 @@ public class ImageActivity extends BaseActivity implements ImageStrategy.ImageSt
 		// Load preferences
 		Log.d(TAG, "Loaded preferences:");
 //		SLIDESHOW_DELAY = (int) (Float.parseFloat(preferences.getString("slide_delay", "3")) * 1000);
-		SLIDESHOW_DELAY = 1000;
+		SLIDESHOW_DELAY = 100;
 		Log.d(TAG, String.format("SLIDESHOW_DELAY: %d", SLIDESHOW_DELAY));
 		REVERSE_ORDER = preferences.getBoolean("reverse_order", false);
 		Log.d(TAG, String.format("REVERSE_ORDER: %b", REVERSE_ORDER));

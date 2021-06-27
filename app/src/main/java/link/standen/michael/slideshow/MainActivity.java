@@ -86,8 +86,15 @@ public class MainActivity extends BaseActivity {
 			}
 		});
 		ARMdlHumanPoseJNI.setAssetManager(getAssets());
-		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
-
+		// pose_mode:
+		// 0: 双杠
+		// 1: 引体向上
+		// 2: 俯卧撑    头左 20 头右 21
+		// 3: 臀桥      头左 30 头右 31
+		// 4: 仰卧起坐   头左 40 头右 41
+//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 21);
+//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
+		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 41);
 	}
 
 

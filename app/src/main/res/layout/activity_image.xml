@@ -11,6 +11,8 @@
 		android:layout_height="match_parent"
 		android:gravity="center"
 		android:keepScreenOn="true"
+		android:adjustViewBounds="true"
+		android:scaleType="centerCrop"
 		android:contentDescription="@string/image_description"/>
 
 	<!-- Image Details Overlay -->
