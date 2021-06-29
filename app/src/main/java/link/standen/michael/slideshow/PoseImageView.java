@@ -7,18 +7,24 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.widget.ImageView;
 
 import com.bumptech.glide.load.resource.bitmap.GlideBitmapDrawable;
+import com.github.psambit9791.jdsp.signal.Smooth;
+import com.github.psambit9791.jdsp.signal.peaks.FindPeak;
+import com.github.psambit9791.jdsp.signal.peaks.Peak;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 
 public class PoseImageView extends android.support.v7.widget.AppCompatImageView {
     private static final String TAG = PoseImageView.class.getName();
+    private HashMap<String, ArrayList<Double>> result = new HashMap<String, ArrayList<Double>>();
+    int total_counts = 0;
 
     public static float[] kpnts = new float[120];  // > 3*34
     public static int num;
@@ -56,14 +62,46 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
     public PoseImageView(Context context) {
         super(context);
+        generateResultHashMap(colNames);
     }
     public PoseImageView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        generateResultHashMap(colNames);
     }
 
     public PoseImageView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        generateResultHashMap(colNames);
     }
+
+    String[] colNames = {
+            "右脚踝-x","右脚踝-y",   //        {"name":"右脚踝", "pos":0},
+            "右膝-x","右膝-y",      //        {"name":"右膝", "pos":1},
+            "右股-x","右股-y",      //        {"name":"右股", "pos":2},
+            "左股-x","左股-y",      //        { "name":"左股","pos":3},
+            "左膝-x","左膝-y",      //        { "name":"左膝","pos":4},
+            "左脚踝-x","左脚踝-y",    //        { "name":"左脚踝","pos":5},
+            //"盆骨-x","盆骨-y",      //        { "name":"盆骨","pos":3},
+            "胸部-x","胸部-y",      //        { "name":"胸部","pos":6},
+            "脖子-x","脖子-y",      //        { "name":"脖子","pos":7},
+            "下巴-x","下巴-y",      //        { "name":"下巴","pos":8},
+            "鼻子-x","鼻子-y",      //        { "name":"鼻子","pos":9},
+            "头部-x","头部-y",      //        { "name":"头部","pos":10},
+            "右手腕-x","右手腕-y",    //        { "name":"右手腕","pos":11},
+            "右手肘-x","右手肘-y",    //        { "name":"右手肘","pos":12},
+            "右肩-x","右肩-y",      //        { "name":"右肩","pos":13},
+            "左肩-x","左肩-y",      //        { "name":"左肩","pos":14},
+            "左手肘-x","左手肘-y",    //        { "name":"左手肘","pos":15},
+            "左手腕-x","左手腕-y",    //        { "name":"左手腕","pos":16}
+    };
+
+
+    public void generateResultHashMap(String[] colNames) {
+        for (int i=0; i<colNames.length; i++) {
+            this.result.put(colNames[i], new ArrayList<Double>());
+        }
+    }
+
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -98,6 +136,29 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         if(num>0){
             Log.e(TAG, num + "people detected!");
             drawPose(canvas, mPaint);
+            for(int i=0; i<colNames.length; i++){
+                result.get(colNames[i]).add(((double)(kpnts[i])));
+            }
+            if(result.get(colNames[0]).size()>=30){
+                double[] signals = new double[result.get("左肩-x").size()];
+                for(int i=0; i<signals.length; i++){
+                    signals[i] = result.get("左肩-x").get(i);
+                }
+                // smooth signal
+                Smooth s1 = new Smooth(signals, 5, "triangular");
+//                FindPeak fp = new FindPeak(signals);
+                FindPeak fp = new FindPeak(s1.smoothSignal());
+                Peak out_peaks = fp.detectPeaks();
+                Peak out_troughs = fp.detectTroughs();
+                int[] out_peaks_filtered = out_peaks.filterByHeight(0.6,0.7);
+                total_counts = out_peaks_filtered.length;
+//                Log.e(TAG, "左肩-x " + "out_peaks:" + Arrays.toString(out_peaks.getPeaks()));
+                if(total_counts>0) {
+                    Log.e(TAG, "左肩-x " + "out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
+//                Log.e(TAG, "左肩-x " + "out_troughs:" + Arrays.toString(out_troughs.getPeaks()));
+                    Log.e(TAG, "total_counts:" + total_counts + "    peak_value:" + signals[out_peaks_filtered[total_counts - 1]]);
+                }
+            }
         }
 
     }
@@ -105,8 +166,9 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         int w = canvas.getWidth();
         int h = canvas.getHeight();
 
-        mpaint.setColor(Color.YELLOW);
+        mPaint.setColor(Color.YELLOW);
         mPaint.setStrokeWidth(5);
+        mPaint.setTextSize(200);
 
         for (int i = 0; i < num; i++) {
             // 画线
@@ -123,6 +185,8 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 canvas.drawLine(xx0, yy0, xx1, yy1, mpaint);
             }
         }
+
+        canvas.drawText(Integer.toString(total_counts), 200, 200, mPaint);
     }
 
     private void drawRefLines(Canvas canvas, Paint mPaint) {
