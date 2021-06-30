@@ -25,6 +25,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
     private static final String TAG = PoseImageView.class.getName();
     private HashMap<String, ArrayList<Double>> result = new HashMap<String, ArrayList<Double>>();
     int total_counts = 0;
+    int last_count = 0;
 
     public static float[] kpnts = new float[120];  // > 3*34
     public static int num;
@@ -59,6 +60,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
     Paint mPaint = new Paint();
     Path mPath = new Path();
     String mcode = "引体向上";
+    private int last_found;
 
     public PoseImageView(Context context) {
         super(context);
@@ -103,6 +105,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
     }
 
 
+
     @Override
     protected void onDraw(Canvas canvas) {
         // TODO Auto-generated method stub
@@ -136,27 +139,42 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         if(num>0){
             Log.e(TAG, num + "people detected!");
             drawPose(canvas, mPaint);
-            for(int i=0; i<colNames.length; i++){
-                result.get(colNames[i]).add(((double)(kpnts[i])));
+
+            Log.e(TAG, "Add kpnts!");
+            for (int i = 0; i < colNames.length; i++) {
+                result.get(colNames[i]).add(((double) (kpnts[i])));
             }
-            if(result.get(colNames[0]).size()>=30){
+
+            if (result.get(colNames[0]).size() >= 30 ) {
+
+                Log.e(TAG, "Generate signal");
+
                 double[] signals = new double[result.get("左肩-x").size()];
-                for(int i=0; i<signals.length; i++){
+                for (int i = 0; i < signals.length; i++) {
                     signals[i] = result.get("左肩-x").get(i);
                 }
-                // smooth signal
-                Smooth s1 = new Smooth(signals, 5, "triangular");
-//                FindPeak fp = new FindPeak(signals);
-                FindPeak fp = new FindPeak(s1.smoothSignal());
-                Peak out_peaks = fp.detectPeaks();
-                Peak out_troughs = fp.detectTroughs();
-                int[] out_peaks_filtered = out_peaks.filterByHeight(0.6,0.7);
-                total_counts = out_peaks_filtered.length;
+
+                Log.e(TAG, "smooth signal & detect peaks");
+                try {
+                    Smooth s1 = new Smooth(signals, 5, "triangular");
+
+                    FindPeak fp = new FindPeak(s1.smoothSignal());
+                    Peak out_peaks = fp.detectPeaks();
+                    Peak out_troughs = fp.detectTroughs();
+                    int[] out_peaks_filtered = out_peaks.filterByHeight(0.6, 0.7);
+
+                    total_counts = out_peaks_filtered.length;
+
 //                Log.e(TAG, "左肩-x " + "out_peaks:" + Arrays.toString(out_peaks.getPeaks()));
-                if(total_counts>0) {
-                    Log.e(TAG, "左肩-x " + "out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
 //                Log.e(TAG, "左肩-x " + "out_troughs:" + Arrays.toString(out_troughs.getPeaks()));
-                    Log.e(TAG, "total_counts:" + total_counts + "    peak_value:" + signals[out_peaks_filtered[total_counts - 1]]);
+                    if (total_counts > last_count) {
+                        last_count = total_counts;
+                        last_found = out_peaks_filtered[total_counts - 1];
+                        Log.e(TAG, "左肩-x " + "out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
+                        Log.e(TAG, "total_counts:" + total_counts + "    peak_value:" + signals[last_found]);
+                    }
+                } catch (Exception e){
+                    Log.e(TAG, "detect peaks exception:" + e.getMessage());
                 }
             }
         }
