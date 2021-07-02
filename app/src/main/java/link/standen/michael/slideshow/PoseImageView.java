@@ -127,6 +127,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
     private int lastPrimaryPeak = 0;
     private int lastPrimaryTrough = 0;
+    private int lastFound = 0;
 
     private String primaryJoint = "";
     private String primaryPeakThresholdJoint = "";
@@ -182,42 +183,38 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         super.onDraw(canvas);
 //        drawRefLines(canvas, mPaint);
         if(num>0){
-            Log.e(TAG, num + "people detected!");
+            Log.d(TAG, num + "people detected!");
             drawPose(canvas, mPaint);
 
-            Log.e(TAG, "Add kpnts!");
+            Log.d(TAG, "Add kpnts!");
             for (int i = 0; i < colNames.length; i++) {
                 result.get(colNames[i]).add(((double) (kpnts[i])));
             }
 
-            if (result.get(colNames[0]).size() >= 30 ) {
+            if (result.get(colNames[0]).size() - lastFound >= 30 ) {
 
-                Log.e(TAG, "Generate signal");
+                Log.d(TAG, "Generate signal");
 
-                double[] primarySignal = new double[result.get(primaryJoint).size()];
-//                double[] primaryPeakThresholdSignal = new double[result.get(primaryPeakThresholdJoint).size()];
-//                double[] primaryTroughThresholdSignal = new double[result.get(primaryTroughThresholdJoint).size()];
+                ArrayList<Double> inputPrimary = new ArrayList<>(result.get(primaryJoint).subList(lastFound, result.get(primaryJoint).size()));
+                double[] primarySignal = new double[inputPrimary.size()];
+//                double[] primarySignal = new double[result.get(primaryJoint).size()];
 
                 for (int i = 0; i < primarySignal.length; i++) {
-                    primarySignal[i] = result.get(primaryJoint).get(i);
+//                    primarySignal[i] = result.get(primaryJoint).get(i);
+                    primarySignal[i] = inputPrimary.get(i);
                 }
+                Log.d(TAG, "primarySignal: " + Arrays.toString(primarySignal));
 
                 if(!primaryPeakThresholdJoint.equals("")){
                     primaryPeakThreshold = result.get(primaryPeakThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
-//                    for (int i = 0; i < primaryPeakThresholdSignal.length; i++) {
-//                        primaryPeakThresholdSignal[i] = result.get(primaryPeakThresholdJoint).get(i);
-//                    }
                 }
 
                 if(!primaryTroughThresholdJoint.equals("")){
                     primaryTroughThreshold = result.get(primaryTroughThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
-//                    for (int i = 0; i < primaryPeakThresholdSignal.length; i++) {
-//                        primaryTroughThresholdSignal[i] = result.get(primaryTroughThresholdJoint).get(i);
-//                    }
                 }
 
 
-                Log.e(TAG, "smooth signal & detect peaks");
+                Log.d(TAG, "smooth signal & detect peaks");
                 try {
                     Smooth s1 = new Smooth(primarySignal, 5, "triangular");
 
@@ -227,14 +224,16 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                     int[] out_peaks_filtered = out_peaks.filterByHeight(primaryPeakThreshold, null);
                     int[] out_troughs_filtered = out_troughs.filterByHeight(null, primaryTroughThreshold);
 
-                    totalCount = out_peaks_filtered.length;
+                    int count = out_peaks_filtered.length < out_troughs_filtered.length ? out_peaks_filtered.length : out_troughs_filtered.length;
+                    totalCount += count;
 
                     if (totalCount > lastCount) {
                         lastCount = totalCount;
-                        lastPrimaryPeak = out_peaks_filtered[totalCount - 1];
+                        lastPrimaryPeak += out_peaks_filtered[count - 1];
+                        lastFound = lastPrimaryPeak;
                         Log.e(TAG, primaryJoint + " out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
                         Log.e(TAG, primaryJoint + " out_troughs_filtered:" + Arrays.toString(out_troughs_filtered));
-                        Log.e(TAG, "total_counts:" + totalCount + "    peak_value:" + primarySignal[lastPrimaryPeak]);
+                        Log.e(TAG, "total_counts:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_peaks_filtered[count - 1]]);
                     }
                 } catch (Exception e){
                     Log.e(TAG, "detect peaks exception:" + e.getMessage());
