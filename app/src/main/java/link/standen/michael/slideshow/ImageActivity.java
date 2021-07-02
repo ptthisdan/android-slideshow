@@ -8,13 +8,13 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.ActionBar;
-import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.text.format.DateFormat;
 import android.text.format.Formatter;
@@ -22,7 +22,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -294,6 +293,18 @@ public class ImageActivity extends BaseActivity implements ImageStrategy.ImageSt
 		String imagePath = getIntent().getStringExtra("imagePath");
 		boolean autoStart = getIntent().getBooleanExtra("autoStart", false);
 		Log.i(TAG, String.format("Starting slideshow at %s %s", currentPath, imagePath));
+
+		//
+		if(currentPath.contains("仰卧起坐")){
+			mContentView.setMcode("仰卧起坐");
+		}else if(currentPath.contains("引体向上")){
+			mContentView.setMcode("引体向上");
+		}else if(currentPath.contains("双杠臂屈伸")){
+			mContentView.setMcode("双杠臂屈伸");
+		}else if(currentPath.contains("俯卧撑")){
+			mContentView.setMcode("俯卧撑");
+		}
+
 		// Save the starting values
 		SharedPreferences.Editor editor = preferences.edit();
 		editor.putString("remembered_location", currentPath);

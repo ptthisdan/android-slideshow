@@ -20,12 +20,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class PoseImageView extends android.support.v7.widget.AppCompatImageView {
     private static final String TAG = PoseImageView.class.getName();
     private HashMap<String, ArrayList<Double>> result = new HashMap<String, ArrayList<Double>>();
-    int total_counts = 0;
-    int last_count = 0;
 
     public static float[] kpnts = new float[120];  // > 3*34
     public static int num;
@@ -59,8 +58,6 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
     Paint mPaint = new Paint();
     Path mPath = new Path();
-    String mcode = "引体向上";
-    private int last_found;
 
     public PoseImageView(Context context) {
         super(context);
@@ -96,6 +93,54 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             "左手肘-x","左手肘-y",    //        { "name":"左手肘","pos":15},
             "左手腕-x","左手腕-y",    //        { "name":"左手腕","pos":16}
     };
+
+    public String getMcode() {
+        return mcode;
+    }
+
+    public void setMcode(String mcode) {
+        this.mcode = mcode;
+
+        if(Objects.equals(mcode, "仰卧起坐")){
+            primaryJoint = "左肩-y";
+            primaryPeakThresholdJoint = "左股-y";
+            primaryTroughThresholdJoint = "左膝-y";
+            primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
+        }else if(Objects.equals(mcode, "引体向上")){
+            primaryJoint = "下巴-y";
+            primaryTroughThresholdJoint = "右手腕-y";
+            primayryDetectMethod = DetectMethod.TROUGH;
+        }
+    }
+
+    String mcode = "引体向上";
+    enum DetectMethod{
+        IGNORE,
+        PEAK,
+        TROUGH,
+        PEAK_AND_TROUGH
+    }
+
+    private int totalCount = 0;
+    private int invalidCount = 0;
+    private int lastCount = 0;
+
+    private int lastPrimaryPeak = 0;
+    private int lastPrimaryTrough = 0;
+
+    private String primaryJoint = "";
+    private String primaryPeakThresholdJoint = "";
+    private String primaryTroughThresholdJoint = "";
+    private Double primaryPeakThreshold = 0.0;
+    private Double primaryTroughThreshold = 0.0;
+    private DetectMethod primayryDetectMethod = DetectMethod.PEAK;
+
+    private String secondaryJoint = "";
+    private String secondaryPeakThresholdJoint = "";
+    private String secondaryTroughThresholdJoint = "";
+    private Double secondaryPeakThreshold = 0.0;
+    private Double secondaryTroughThreshold = 0.0;
+    private DetectMethod secondaryDetectMethod = DetectMethod.IGNORE;
 
 
     public void generateResultHashMap(String[] colNames) {
@@ -149,29 +194,47 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
                 Log.e(TAG, "Generate signal");
 
-                double[] signals = new double[result.get("左肩-x").size()];
-                for (int i = 0; i < signals.length; i++) {
-                    signals[i] = result.get("左肩-x").get(i);
+                double[] primarySignal = new double[result.get(primaryJoint).size()];
+//                double[] primaryPeakThresholdSignal = new double[result.get(primaryPeakThresholdJoint).size()];
+//                double[] primaryTroughThresholdSignal = new double[result.get(primaryTroughThresholdJoint).size()];
+
+                for (int i = 0; i < primarySignal.length; i++) {
+                    primarySignal[i] = result.get(primaryJoint).get(i);
                 }
+
+                if(!primaryPeakThresholdJoint.equals("")){
+                    primaryPeakThreshold = result.get(primaryPeakThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+//                    for (int i = 0; i < primaryPeakThresholdSignal.length; i++) {
+//                        primaryPeakThresholdSignal[i] = result.get(primaryPeakThresholdJoint).get(i);
+//                    }
+                }
+
+                if(!primaryTroughThresholdJoint.equals("")){
+                    primaryTroughThreshold = result.get(primaryTroughThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+//                    for (int i = 0; i < primaryPeakThresholdSignal.length; i++) {
+//                        primaryTroughThresholdSignal[i] = result.get(primaryTroughThresholdJoint).get(i);
+//                    }
+                }
+
 
                 Log.e(TAG, "smooth signal & detect peaks");
                 try {
-                    Smooth s1 = new Smooth(signals, 5, "triangular");
+                    Smooth s1 = new Smooth(primarySignal, 5, "triangular");
 
                     FindPeak fp = new FindPeak(s1.smoothSignal());
                     Peak out_peaks = fp.detectPeaks();
                     Peak out_troughs = fp.detectTroughs();
-                    int[] out_peaks_filtered = out_peaks.filterByHeight(0.6, 0.7);
+                    int[] out_peaks_filtered = out_peaks.filterByHeight(primaryPeakThreshold, null);
+                    int[] out_troughs_filtered = out_troughs.filterByHeight(null, primaryTroughThreshold);
 
-                    total_counts = out_peaks_filtered.length;
+                    totalCount = out_peaks_filtered.length;
 
-//                Log.e(TAG, "左肩-x " + "out_peaks:" + Arrays.toString(out_peaks.getPeaks()));
-//                Log.e(TAG, "左肩-x " + "out_troughs:" + Arrays.toString(out_troughs.getPeaks()));
-                    if (total_counts > last_count) {
-                        last_count = total_counts;
-                        last_found = out_peaks_filtered[total_counts - 1];
-                        Log.e(TAG, "左肩-x " + "out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
-                        Log.e(TAG, "total_counts:" + total_counts + "    peak_value:" + signals[last_found]);
+                    if (totalCount > lastCount) {
+                        lastCount = totalCount;
+                        lastPrimaryPeak = out_peaks_filtered[totalCount - 1];
+                        Log.e(TAG, primaryJoint + " out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
+                        Log.e(TAG, primaryJoint + " out_troughs_filtered:" + Arrays.toString(out_troughs_filtered));
+                        Log.e(TAG, "total_counts:" + totalCount + "    peak_value:" + primarySignal[lastPrimaryPeak]);
                     }
                 } catch (Exception e){
                     Log.e(TAG, "detect peaks exception:" + e.getMessage());
@@ -204,7 +267,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             }
         }
 
-        canvas.drawText(Integer.toString(total_counts), 200, 200, mPaint);
+        canvas.drawText(Integer.toString(totalCount), 200, 200, mPaint);
     }
 
     private void drawRefLines(Canvas canvas, Paint mPaint) {

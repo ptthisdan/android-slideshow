@@ -18,7 +18,6 @@ import android.widget.ListView;
 
 import com.baidu.ar.Authenticator;
 import com.baidu.ar.auth.IAuthCallback;
-import com.baidu.arpose.ARMdlHumanPoseJNI;
 
 import java.io.File;
 
@@ -72,29 +71,6 @@ public class MainActivity extends BaseActivity {
 			currentPath = getIntent().getStringExtra("path");
 		}
 
-		System.loadLibrary("auth");
-		// 初始化授权模块
-		Authenticator.init(getApplicationContext(), new IAuthCallback() {
-			@Override
-			public void onSuccess() {
-				Log.d(TAG, "Authenticator Passed");
-			}
-
-			@Override
-			public void onError(String errorMessage, int featureCode) {
-				Log.e(TAG, "Authenticator Failed");
-			}
-		});
-		ARMdlHumanPoseJNI.setAssetManager(getAssets());
-		// pose_mode:
-		// 0: 双杠
-		// 1: 引体向上
-		// 2: 俯卧撑    头左 20 头右 21
-		// 3: 臀桥      头左 30 头右 31
-		// 4: 仰卧起坐   头左 40 头右 41
-//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 21);
-//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
-		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 41);
 	}
 
 
@@ -198,6 +174,43 @@ public class MainActivity extends BaseActivity {
 	 */
 	private void startSlideshowAt(String folderPath, String filePath, boolean autoStart){
 		Log.i(TAG, String.format("Calling slideshow at %s %s", folderPath, filePath));
+
+		System.loadLibrary("auth");
+		// 初始化授权模块
+		Authenticator.init(getApplicationContext(), new IAuthCallback() {
+			@Override
+			public void onSuccess() {
+				Log.d(TAG, "Authenticator Passed");
+			}
+
+			@Override
+			public void onError(String errorMessage, int featureCode) {
+				Log.e(TAG, "Authenticator Failed");
+			}
+		});
+		com.baidu.arpose.ARMdlHumanPoseJNI.setAssetManager(getAssets());
+		// poseMode:
+		// 0: 双杠
+		// 1: 引体向上
+		// 2: 俯卧撑    头左 20 头右 21
+		// 3: 臀桥      头左 30 头右 31
+		// 4: 仰卧起坐   头左 40 头右 41
+//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 21);
+//		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
+		int poseMode = 41;
+
+		if(folderPath.contains("仰卧起坐")){
+			poseMode = 41;
+		}else if(folderPath.contains("引体向上") || folderPath.contains("屈臂悬垂")){
+			poseMode = 1;
+		}else if(folderPath.contains("双杠臂屈伸")){
+			poseMode = 0;
+		}else if(folderPath.contains("俯卧撑")){
+			poseMode = 21;
+		}
+
+		com.baidu.arpose.ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, poseMode);
+
 		Intent intent = new Intent(MainActivity.this, ImageActivity.class);
 		intent.putExtra("currentPath", folderPath);
 		intent.putExtra("imagePath", filePath);
