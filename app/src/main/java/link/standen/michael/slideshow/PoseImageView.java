@@ -20,7 +20,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PoseImageView extends android.support.v7.widget.AppCompatImageView {
     private static final String TAG = PoseImageView.class.getName();
@@ -221,7 +223,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + primaryPeakThreshold + " throughThreshold=" + primaryTroughThreshold);
                 try {
                     Log.d(TAG, "Count primaryJoint"+primaryJoint);
-                    ArrayList<Integer> out_filtered = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold);
+                    ArrayList<Integer> out_filtered = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold, primayryDetectMethod);
                     int count = out_filtered.size();
 
                     if (count > 0) {
@@ -229,7 +231,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                         lastCount = totalCount;
                         lastPrimaryPeak += out_filtered.get(count - 1);
                         lastFound = lastPrimaryPeak;
-                        Log.e(TAG, "total_counts:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_filtered.get(count - 1)]);
+                        Log.e(TAG, "totalCount:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_filtered.get(count - 1)]);
                     }
                 } catch (Exception e){
                     Log.e(TAG, "detect peaks exception:" + e.getMessage());
@@ -239,33 +241,36 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
     }
 
-    // Attention: Only works in Sorted Array!
-    static ArrayList<Integer> commonElements(int[] array1, int[] array2) {
-        int p1 = 0;
-        int p2 = 0;
-        ArrayList<Integer> common = new ArrayList<Integer>();
 
-        while(true) {
-            if (array1[p1] == array2[p2]) {
-                common.add(array1[p1]);
-            }
-            if (p1 == array1.length - 1 || p2 == array2.length - 1) break;
-            if (array1[p1 + 1] < array2[p2 + 1]) {
-                p1++;
-            } else {
-                p2++;
+    public ArrayList<Integer> commonElements(int[] a, int[] b){
+        ArrayList<Integer> common = new ArrayList<Integer>();
+        Set<Integer> set = new HashSet<Integer>();
+
+        for(int ele:a){
+            set.add(ele);
+        }
+
+        for(int ele:b){
+            if(set.contains(ele)){
+                common.add(ele);
             }
         }
+
         return common;
     }
 
-    private ArrayList<Integer> countSignal(double[] Signal, double peakThreshold, double troughThreshold){
+    private ArrayList<Integer> countSignal(double[] Signal, double peakThreshold, double troughThreshold, DetectMethod detectMethod){
         Smooth s1 = new Smooth(Signal, 5, "triangular");
         FindPeak fp = new FindPeak(s1.smoothSignal());
         Peak out_peaks = fp.detectPeaks();
         int[] out_peaks_filtered1 = out_peaks.filterByHeight(peakThreshold, null);
         int[] out_peaks_filtered2 = out_peaks.filterByProminence(0.01, null);
-        ArrayList<Integer> out_peaks_filtered = commonElements(out_peaks_filtered1, out_peaks_filtered2);
+        ArrayList<Integer> out_peaks_filtered = new ArrayList<Integer>();
+        Log.d(TAG, " out_peaks.filterByHeight:" + Arrays.toString(out_peaks_filtered1) + "  out_peaks.filterByProminence:" + Arrays.toString(out_peaks_filtered2));
+        if(out_peaks_filtered1.length > 0 && out_peaks_filtered2.length > 0) {
+            out_peaks_filtered = commonElements(out_peaks_filtered1, out_peaks_filtered2);
+            Log.d(TAG, " out_peaks_filtered:" + out_peaks_filtered.toString());
+        }
         //int[] out_troughs_filtered = out_troughs.filterByHeight(0.0-troughThreshold, null); //TODO: Bullshit to be fixed
 
         double[] reverseSignal = new double[Signal.length];
@@ -277,12 +282,20 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         Peak out_troughs = fp2.detectPeaks();
         int[] out_troughs_filtered1 = out_troughs.filterByHeight(0-troughThreshold, null);
         int[] out_troughs_filtered2 = out_troughs.filterByProminence(0.01, null);
-        ArrayList<Integer> out_troughs_filtered = commonElements(out_troughs_filtered1, out_troughs_filtered2);
+        Log.d(TAG, " out_troughs.filterByHeight:" + Arrays.toString(out_troughs_filtered1) + "  out_troughs.filterByProminence:" + Arrays.toString(out_troughs_filtered2));
+        ArrayList<Integer> out_troughs_filtered = new ArrayList<Integer>();
+        if(out_troughs_filtered1.length > 0 && out_troughs_filtered2.length > 0) {
+            out_troughs_filtered = commonElements(out_troughs_filtered1, out_troughs_filtered2);
+            Log.d(TAG, " out_troughs_filtered:" + out_troughs_filtered.toString());
+        }
 
-        Log.d(TAG, " out_peaks_filtered:" + out_peaks_filtered.toString());
-        Log.d(TAG, " out_troughs_filtered:" + out_troughs_filtered.toString());
-
-        return out_peaks_filtered.size() < out_troughs_filtered.size() ? out_peaks_filtered : out_troughs_filtered;
+        if(DetectMethod.TROUGH == detectMethod){
+            return out_troughs_filtered;
+        }else if(DetectMethod.PEAK == detectMethod){
+            return out_peaks_filtered;
+        }else {
+            return out_peaks_filtered.size() < out_troughs_filtered.size() ? out_peaks_filtered : out_troughs_filtered;
+        }
     }
 
 
