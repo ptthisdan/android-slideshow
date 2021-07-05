@@ -197,6 +197,7 @@ public class MainActivity extends BaseActivity {
 		// 4: 仰卧起坐   头左 40 头右 41
 //		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 21);
 //		ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, 0);
+		int filterType = 2;
 		int poseMode = 41;
 
 		if(folderPath.contains("仰卧起坐")){
@@ -209,7 +210,8 @@ public class MainActivity extends BaseActivity {
 			poseMode = 21;
 		}
 
-		com.baidu.arpose.ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", 1, poseMode);
+		Log.e(TAG, "initPoseFromeAsset: "+ "filterType=" + filterType + "poseMode=" + poseMode);
+		com.baidu.arpose.ARMdlHumanPoseJNI.initPoseFromAsset("mdlModels", "mdlModels", "mdlModels", filterType, poseMode);
 
 		Intent intent = new Intent(MainActivity.this, ImageActivity.class);
 		intent.putExtra("currentPath", folderPath);
