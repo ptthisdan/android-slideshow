@@ -108,14 +108,18 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             primaryPeakThresholdJoint = "左股-y";
             primaryTroughThresholdJoint = "左膝-y";
             primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
+            secondaryJoint = "左手肘-x";
+            secondaryTroughThresholdJoint = "左股-x";
+            primayryDetectMethod = DetectMethod.TROUGH;
         }else if(Objects.equals(mcode, "引体向上")){
             primaryJoint = "下巴-y";
             primaryPeakThresholdJoint = "右手肘-y";
 //            primaryTroughThresholdJoint = "右手腕-y";
             primaryTroughThreshold = 0.2;
             primayryDetectMethod = DetectMethod.TROUGH;
-//            secondaryJoint = "右脚踝-x";
-
+            secondaryJoint = "左脚踝-y";
+            secondaryTroughThreshold = 0.75;
+            secondaryDetectMethod = DetectMethod.TROUGH;
         }
     }
 
@@ -149,6 +153,8 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
     private Double secondaryTroughThreshold = 0.0;
     private DetectMethod secondaryDetectMethod = DetectMethod.IGNORE;
 
+    private String errJoint = "";
+
 
     public void generateResultHashMap(String[] colNames) {
         for (int i=0; i<colNames.length; i++) {
@@ -172,9 +178,9 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 for(int j=0; j<resizeWidth; j++){
                     int pixel_now = 3*(i*resizeWidth + j);
                     if(j<=mask_left || j>=mask_right){
-                        bgr[pixel_now] = 0;
-                        bgr[pixel_now+1]=0;
-                        bgr[pixel_now+2]=0;
+                        bgr[pixel_now] = 64;
+                        bgr[pixel_now+1]=64;
+                        bgr[pixel_now+2]=64;
                     }
                 }
             }
@@ -223,17 +229,56 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + primaryPeakThreshold + " throughThreshold=" + primaryTroughThreshold);
                 try {
                     Log.d(TAG, "Count primaryJoint"+primaryJoint);
-                    ArrayList<Integer> out_filtered = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold, primayryDetectMethod);
-                    int count = out_filtered.size();
+                    ArrayList<Integer> outFilteredPrimary = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold, primayryDetectMethod);
+                    int countPrimary = outFilteredPrimary.size();
 
-                    if (count > 0) {
-                        totalCount += count;
-                        lastCount = totalCount;
-                        lastPrimaryPeak += out_filtered.get(count - 1);
-                        lastFound = lastPrimaryPeak;
-                        Log.e(TAG, "totalCount:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_filtered.get(count - 1)]);
+
+                    if (countPrimary > 0) {
+                        errJoint = "";
+
+                        // Slice aligned with primary Joint
+                        ArrayList<Double> inputSecondary = new ArrayList<>(result.get(secondaryJoint).subList(lastFound, result.get(primaryJoint).size()));
+                        double[] secondarySignal = new double[inputSecondary.size()];
+
+                        for (int i = 0; i < secondarySignal.length; i++) {
+                            secondarySignal[i] = inputSecondary.get(i);
+                        }
+
+                        lastFound += outFilteredPrimary.get(countPrimary - 1);
+                        Log.e(TAG, " lastFound: " + lastFound + " foundValue:" + primarySignal[outFilteredPrimary.get(countPrimary - 1)]);
+
+                        Log.d(TAG, "Count secondaryJoint: " + secondaryJoint + " lastFound: " + lastFound + "lastSignal: " + result.get(primaryJoint).size());
+
+
+                        if (!secondaryPeakThresholdJoint.equals("")) {
+                            secondaryPeakThreshold = result.get(secondaryPeakThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
+                        }
+
+                        if (!secondaryTroughThresholdJoint.equals("")) {
+                            secondaryTroughThreshold = result.get(secondaryTroughThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
+                        }
+                        Log.d(TAG, "secondarySignal: " + Arrays.toString(secondarySignal));
+                        Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + secondaryPeakThreshold + " throughThreshold=" + secondaryTroughThreshold);
+                        ArrayList<Integer> outFilteredSecondary = countSignal(secondarySignal, secondaryPeakThreshold, secondaryTroughThreshold, secondaryDetectMethod);
+                        int countSecondary = outFilteredSecondary.size();
+
+                        if (countPrimary != countSecondary) {
+                            errJoint = errJoint + secondaryJoint;
+                            countPrimary = 0;
+                            Log.e(TAG, "Error secondaryJoint:" + secondaryJoint);
+                        }
+
                     }
-                } catch (Exception e){
+
+                    if (countPrimary > 0) {
+
+                        totalCount += countPrimary;
+                        lastCount = totalCount;
+                    }
+
+                    Log.e(TAG, "totalCount:" + totalCount);
+
+                } catch (Exception e) {
                     Log.e(TAG, "detect peaks exception:" + e.getMessage());
                 }
             }
@@ -323,7 +368,11 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             }
         }
 
-        canvas.drawText(Integer.toString(totalCount), 200, 200, mPaint);
+        if(!errJoint.equals("")) {
+            canvas.drawText(errJoint, 200, 200, mPaint);
+        }else {
+            canvas.drawText(Integer.toString(totalCount), 200, 200, mPaint);
+        }
     }
 
     private void drawRefLines(Canvas canvas, Paint mPaint) {
