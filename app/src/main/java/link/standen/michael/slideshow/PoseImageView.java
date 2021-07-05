@@ -108,8 +108,12 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
         }else if(Objects.equals(mcode, "引体向上")){
             primaryJoint = "下巴-y";
-            primaryTroughThresholdJoint = "右手腕-y";
+            primaryPeakThresholdJoint = "右手肘-y";
+//            primaryTroughThresholdJoint = "右手腕-y";
+            primaryTroughThreshold = 0.2;
             primayryDetectMethod = DetectMethod.TROUGH;
+//            secondaryJoint = "右脚踝-x";
+
         }
     }
 
@@ -214,26 +218,18 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 }
 
 
-                Log.d(TAG, "smooth signal & detect peaks");
+                Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + primaryPeakThreshold + " throughThreshold=" + primaryTroughThreshold);
                 try {
-                    Smooth s1 = new Smooth(primarySignal, 5, "triangular");
+                    Log.d(TAG, "Count primaryJoint"+primaryJoint);
+                    ArrayList<Integer> out_filtered = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold);
+                    int count = out_filtered.size();
 
-                    FindPeak fp = new FindPeak(s1.smoothSignal());
-                    Peak out_peaks = fp.detectPeaks();
-                    Peak out_troughs = fp.detectTroughs();
-                    int[] out_peaks_filtered = out_peaks.filterByHeight(primaryPeakThreshold, null);
-                    int[] out_troughs_filtered = out_troughs.filterByHeight(null, primaryTroughThreshold);
-
-                    int count = out_peaks_filtered.length < out_troughs_filtered.length ? out_peaks_filtered.length : out_troughs_filtered.length;
-                    totalCount += count;
-
-                    if (totalCount > lastCount) {
+                    if (count > 0) {
+                        totalCount += count;
                         lastCount = totalCount;
-                        lastPrimaryPeak += out_peaks_filtered[count - 1];
+                        lastPrimaryPeak += out_filtered.get(count - 1);
                         lastFound = lastPrimaryPeak;
-                        Log.e(TAG, primaryJoint + " out_peaks_filtered:" + Arrays.toString(out_peaks_filtered));
-                        Log.e(TAG, primaryJoint + " out_troughs_filtered:" + Arrays.toString(out_troughs_filtered));
-                        Log.e(TAG, "total_counts:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_peaks_filtered[count - 1]]);
+                        Log.e(TAG, "total_counts:" + totalCount + " lastFound: " + lastFound + " peak_value:" + primarySignal[out_filtered.get(count - 1)]);
                     }
                 } catch (Exception e){
                     Log.e(TAG, "detect peaks exception:" + e.getMessage());
@@ -242,6 +238,54 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         }
 
     }
+
+    // Attention: Only works in Sorted Array!
+    static ArrayList<Integer> commonElements(int[] array1, int[] array2) {
+        int p1 = 0;
+        int p2 = 0;
+        ArrayList<Integer> common = new ArrayList<Integer>();
+
+        while(true) {
+            if (array1[p1] == array2[p2]) {
+                common.add(array1[p1]);
+            }
+            if (p1 == array1.length - 1 || p2 == array2.length - 1) break;
+            if (array1[p1 + 1] < array2[p2 + 1]) {
+                p1++;
+            } else {
+                p2++;
+            }
+        }
+        return common;
+    }
+
+    private ArrayList<Integer> countSignal(double[] Signal, double peakThreshold, double troughThreshold){
+        Smooth s1 = new Smooth(Signal, 5, "triangular");
+        FindPeak fp = new FindPeak(s1.smoothSignal());
+        Peak out_peaks = fp.detectPeaks();
+        int[] out_peaks_filtered1 = out_peaks.filterByHeight(peakThreshold, null);
+        int[] out_peaks_filtered2 = out_peaks.filterByProminence(0.01, null);
+        ArrayList<Integer> out_peaks_filtered = commonElements(out_peaks_filtered1, out_peaks_filtered2);
+        //int[] out_troughs_filtered = out_troughs.filterByHeight(0.0-troughThreshold, null); //TODO: Bullshit to be fixed
+
+        double[] reverseSignal = new double[Signal.length];
+        for (int i=0; i<reverseSignal.length; i++) {
+            reverseSignal[i] = 0 - Signal[i];
+        }
+        Smooth s2 = new Smooth(reverseSignal, 5, "triangular");
+        FindPeak fp2 = new FindPeak(s2.smoothSignal());
+        Peak out_troughs = fp2.detectPeaks();
+        int[] out_troughs_filtered1 = out_troughs.filterByHeight(0-troughThreshold, null);
+        int[] out_troughs_filtered2 = out_troughs.filterByProminence(0.01, null);
+        ArrayList<Integer> out_troughs_filtered = commonElements(out_troughs_filtered1, out_troughs_filtered2);
+
+        Log.d(TAG, " out_peaks_filtered:" + out_peaks_filtered.toString());
+        Log.d(TAG, " out_troughs_filtered:" + out_troughs_filtered.toString());
+
+        return out_peaks_filtered.size() < out_troughs_filtered.size() ? out_peaks_filtered : out_troughs_filtered;
+    }
+
+
     private void drawPose(Canvas canvas, Paint mpaint) {
         int w = canvas.getWidth();
         int h = canvas.getHeight();
