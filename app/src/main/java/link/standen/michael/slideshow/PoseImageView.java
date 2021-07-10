@@ -120,6 +120,28 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             secondaryJoint = "左脚踝-y";
             secondaryTroughThreshold = 0.75;
             secondaryDetectMethod = DetectMethod.TROUGH;
+        }else if(Objects.equals(mcode, "双杠臂屈伸")){
+            primaryJoint = "胸部-y";
+            primaryPeakThresholdJoint = "右手腕-y";
+            primaryTroughThresholdJoint = "右手肘-y";
+//            primaryTroughThreshold = 0.2;
+            primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
+            secondaryJoint = "右膝-y";
+            secondaryTroughThreshold = 0.55;
+            secondaryDetectMethod = DetectMethod.PEAK;
+        }else if(Objects.equals(mcode, "俯卧撑")){
+            primaryJoint = "右肩-y";
+            primaryPeakThresholdJoint = "右手肘-y";
+            primaryPeakThresholdShift = -0.06;
+            primaryTroughThresholdJoint = "右手肘-y";
+            primaryTroughThresholdShift = -0.1;
+//            primaryTroughThreshold = 0.2;
+            primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
+            secondaryJoint = "右膝-y";
+            secondaryPeakThresholdJoint = "右脚踝-y";
+            secondaryTroughThresholdJoint = "右脚踝-y";
+            secondaryTroughProminence = 0.0;
+            secondaryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
         }
     }
 
@@ -143,14 +165,22 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
     private String primaryPeakThresholdJoint = "";
     private String primaryTroughThresholdJoint = "";
     private Double primaryPeakThreshold = 0.0;
+    private Double primaryPeakThresholdShift = 0.0;
+    private Double primaryPeakProminence = 0.01;
     private Double primaryTroughThreshold = 0.0;
+    private Double primaryTroughThresholdShift = 0.0;
+    private Double primaryTroughProminence = 0.01;
     private DetectMethod primayryDetectMethod = DetectMethod.PEAK;
 
     private String secondaryJoint = "";
     private String secondaryPeakThresholdJoint = "";
     private String secondaryTroughThresholdJoint = "";
     private Double secondaryPeakThreshold = 0.0;
+    private Double secondaryPeakThresholdShift = 0.0;
+    private Double secondaryPeakProminence = 0.01;
     private Double secondaryTroughThreshold = 0.0;
+    private Double secondaryTroughThresholdShift = 0.0;
+    private Double secondaryTroughProminence = 0.01;
     private DetectMethod secondaryDetectMethod = DetectMethod.IGNORE;
 
     private String errJoint = "";
@@ -219,17 +249,19 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
                 if(!primaryPeakThresholdJoint.equals("")){
                     primaryPeakThreshold = result.get(primaryPeakThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+                    primaryPeakThreshold += primaryPeakThresholdShift;
                 }
 
                 if(!primaryTroughThresholdJoint.equals("")){
                     primaryTroughThreshold = result.get(primaryTroughThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+                    primaryTroughThreshold += primaryTroughThresholdShift;
                 }
 
 
                 Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + primaryPeakThreshold + " throughThreshold=" + primaryTroughThreshold);
                 try {
                     Log.d(TAG, "Count primaryJoint"+primaryJoint);
-                    ArrayList<Integer> outFilteredPrimary = countSignal(primarySignal, primaryPeakThreshold, primaryTroughThreshold, primayryDetectMethod);
+                    ArrayList<Integer> outFilteredPrimary = countSignal(primarySignal, primaryPeakThreshold, primaryPeakProminence, primaryTroughThreshold, primaryTroughProminence, primayryDetectMethod);
                     int countPrimary = outFilteredPrimary.size();
 
 
@@ -252,14 +284,16 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
 
                         if (!secondaryPeakThresholdJoint.equals("")) {
                             secondaryPeakThreshold = result.get(secondaryPeakThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
+                            secondaryPeakThreshold += secondaryPeakThresholdShift;
                         }
 
                         if (!secondaryTroughThresholdJoint.equals("")) {
                             secondaryTroughThreshold = result.get(secondaryTroughThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
+                            secondaryTroughThreshold += secondaryTroughThresholdShift;
                         }
                         Log.d(TAG, "secondarySignal: " + Arrays.toString(secondarySignal));
                         Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + secondaryPeakThreshold + " throughThreshold=" + secondaryTroughThreshold);
-                        ArrayList<Integer> outFilteredSecondary = countSignal(secondarySignal, secondaryPeakThreshold, secondaryTroughThreshold, secondaryDetectMethod);
+                        ArrayList<Integer> outFilteredSecondary = countSignal(secondarySignal, secondaryPeakThreshold, secondaryPeakProminence, secondaryTroughThreshold, secondaryTroughProminence, secondaryDetectMethod);
                         int countSecondary = outFilteredSecondary.size();
 
                         if (countPrimary != countSecondary) {
@@ -304,12 +338,12 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         return common;
     }
 
-    private ArrayList<Integer> countSignal(double[] Signal, double peakThreshold, double troughThreshold, DetectMethod detectMethod){
+    private ArrayList<Integer> countSignal(double[] Signal, double peakThreshold, double peakProminence, double troughThreshold, double troughProminence, DetectMethod detectMethod){
         Smooth s1 = new Smooth(Signal, 5, "triangular");
         FindPeak fp = new FindPeak(s1.smoothSignal());
         Peak out_peaks = fp.detectPeaks();
         int[] out_peaks_filtered1 = out_peaks.filterByHeight(peakThreshold, null);
-        int[] out_peaks_filtered2 = out_peaks.filterByProminence(0.01, null);
+        int[] out_peaks_filtered2 = out_peaks.filterByProminence(peakProminence, null);
         ArrayList<Integer> out_peaks_filtered = new ArrayList<Integer>();
         Log.d(TAG, " out_peaks.filterByHeight:" + Arrays.toString(out_peaks_filtered1) + "  out_peaks.filterByProminence:" + Arrays.toString(out_peaks_filtered2));
         if(out_peaks_filtered1.length > 0 && out_peaks_filtered2.length > 0) {
@@ -326,7 +360,7 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
         FindPeak fp2 = new FindPeak(s2.smoothSignal());
         Peak out_troughs = fp2.detectPeaks();
         int[] out_troughs_filtered1 = out_troughs.filterByHeight(0-troughThreshold, null);
-        int[] out_troughs_filtered2 = out_troughs.filterByProminence(0.01, null);
+        int[] out_troughs_filtered2 = out_troughs.filterByProminence(troughProminence, null);
         Log.d(TAG, " out_troughs.filterByHeight:" + Arrays.toString(out_troughs_filtered1) + "  out_troughs.filterByProminence:" + Arrays.toString(out_troughs_filtered2));
         ArrayList<Integer> out_troughs_filtered = new ArrayList<Integer>();
         if(out_troughs_filtered1.length > 0 && out_troughs_filtered2.length > 0) {
