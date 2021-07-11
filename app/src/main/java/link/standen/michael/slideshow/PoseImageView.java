@@ -131,15 +131,17 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
             secondaryDetectMethod = DetectMethod.PEAK;
         }else if(Objects.equals(mcode, "俯卧撑")){
             primaryJoint = "右肩-y";
-            primaryPeakThresholdJoint = "右手肘-y";
-            primaryPeakThresholdShift = -0.06;
-            primaryTroughThresholdJoint = "右手肘-y";
-            primaryTroughThresholdShift = -0.1;
+            primaryPeakThresholdJoint = "右脚踝-y";
+            primaryPeakThresholdShift = -0.11;
+            primaryTroughThresholdJoint = "右脚踝-y";
+            primaryTroughThresholdShift = -0.15;
 //            primaryTroughThreshold = 0.2;
             primayryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
-            secondaryJoint = "右膝-y";
+            secondaryJoint = "右股-y";
             secondaryPeakThresholdJoint = "右脚踝-y";
+            secondaryPeakThresholdShift = -0.07;
             secondaryTroughThresholdJoint = "右脚踝-y";
+            secondaryTroughThresholdShift = -0.09;
             secondaryTroughProminence = 0.0;
             secondaryDetectMethod = DetectMethod.PEAK_AND_TROUGH;
         }
@@ -248,12 +250,12 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                 Log.d(TAG, "primarySignal: " + Arrays.toString(primarySignal));
 
                 if(!primaryPeakThresholdJoint.equals("")){
-                    primaryPeakThreshold = result.get(primaryPeakThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+                    primaryPeakThreshold = result.get(primaryPeakThresholdJoint).subList(lastFound, result.get(primaryJoint).size()).stream().mapToDouble(a->a).average().orElse(0.0);
                     primaryPeakThreshold += primaryPeakThresholdShift;
                 }
 
                 if(!primaryTroughThresholdJoint.equals("")){
-                    primaryTroughThreshold = result.get(primaryTroughThresholdJoint).stream().mapToDouble(a->a).average().orElse(0.0);
+                    primaryTroughThreshold = result.get(primaryTroughThresholdJoint).subList(lastFound, result.get(primaryJoint).size()).stream().mapToDouble(a->a).average().orElse(0.0);
                     primaryTroughThreshold += primaryTroughThresholdShift;
                 }
 
@@ -276,23 +278,25 @@ public class PoseImageView extends android.support.v7.widget.AppCompatImageView 
                             secondarySignal[i] = inputSecondary.get(i);
                         }
 
+                        if (!secondaryPeakThresholdJoint.equals("")) {
+                            secondaryPeakThreshold = result.get(secondaryPeakThresholdJoint).subList(lastFound, result.get(primaryJoint).size()).stream().mapToDouble(a -> a).average().orElse(0.0);
+                            secondaryPeakThreshold += secondaryPeakThresholdShift;
+                        }
+
+                        if (!secondaryTroughThresholdJoint.equals("")) {
+                            secondaryTroughThreshold = result.get(secondaryTroughThresholdJoint).subList(lastFound, result.get(primaryJoint).size()).stream().mapToDouble(a -> a).average().orElse(0.0);
+                            secondaryTroughThreshold += secondaryTroughThresholdShift;
+                        }
+
+                        Log.d(TAG, "secondarySignal: " + Arrays.toString(secondarySignal));
+                        Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + secondaryPeakThreshold + " throughThreshold=" + secondaryTroughThreshold);
+
                         lastFound += outFilteredPrimary.get(countPrimary - 1);
                         Log.e(TAG, " lastFound: " + lastFound + " foundValue:" + primarySignal[outFilteredPrimary.get(countPrimary - 1)]);
 
                         Log.d(TAG, "Count secondaryJoint: " + secondaryJoint + " lastFound: " + lastFound + "lastSignal: " + result.get(primaryJoint).size());
 
 
-                        if (!secondaryPeakThresholdJoint.equals("")) {
-                            secondaryPeakThreshold = result.get(secondaryPeakThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
-                            secondaryPeakThreshold += secondaryPeakThresholdShift;
-                        }
-
-                        if (!secondaryTroughThresholdJoint.equals("")) {
-                            secondaryTroughThreshold = result.get(secondaryTroughThresholdJoint).stream().mapToDouble(a -> a).average().orElse(0.0);
-                            secondaryTroughThreshold += secondaryTroughThresholdShift;
-                        }
-                        Log.d(TAG, "secondarySignal: " + Arrays.toString(secondarySignal));
-                        Log.d(TAG, "smooth signal & detect peaks: peakThreshold=" + secondaryPeakThreshold + " throughThreshold=" + secondaryTroughThreshold);
                         ArrayList<Integer> outFilteredSecondary = countSignal(secondarySignal, secondaryPeakThreshold, secondaryPeakProminence, secondaryTroughThreshold, secondaryTroughProminence, secondaryDetectMethod);
                         int countSecondary = outFilteredSecondary.size();
 
